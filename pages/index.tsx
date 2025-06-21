@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, User } from '../lib/supabase'; // Import User type
 import { useRouter } from 'next/router';
 
 export default function Home() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null); // Use User type instead of any
   const router = useRouter();
 
   useEffect(() => {
