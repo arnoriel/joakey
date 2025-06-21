@@ -9,7 +9,8 @@ const Auth = () => {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    const redirectTo = process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL || 'http://localhost:3000/auth/callback';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const redirectTo = `${baseUrl}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -23,9 +24,10 @@ const Auth = () => {
   };
 
   useEffect(() => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        router.push('/');
+        router.push(`${baseUrl}/`);
       }
     });
 
