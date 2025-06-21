@@ -1,51 +1,40 @@
-import { useEffect, useState } from 'react';
-import { supabase, User } from '../lib/supabase';
+import { useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/router';
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          router.push('/foryou');
+        } else {
+          router.push('/registration');
+        }
+      } else {
+        router.push('/auth');
+      }
     };
 
     getUser();
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/auth`);
-  };
+  }, [router]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center transform transition-all hover:scale-105">
-        <h1 className="text-3xl font-extrabold mb-4 text-gray-800">Joakey</h1>
-        {user ? (
-          <>
-            <p className="mb-6 text-gray-600">Welcome back, <span className="font-semibold">{user.email}</span></p>
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 text-white py-2 px-6 rounded-lg hover:bg-red-600 transition duration-300 shadow-sm"
-            >
-              Logout
-            </button>
-          </>
-        ) : (
-            <button
-              onClick={() => {
-                router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/auth`);
-              }}
-              className="bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 transition duration-300 shadow-sm"
-            >
-              Sign In
-            </button>
-        )}
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+      <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8v-8H4z" />
+      </svg>
     </div>
   );
 }

@@ -20,6 +20,30 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+
+  /* Ensure text within white backgrounds is dark for readability */
+  .bg-white {
+    --foreground: #171717;
+  }
+
+  /* Override text colors for elements within white backgrounds */
+  .bg-white,
+  .bg-white * {
+    color: var(--foreground);
+  }
+
+  /* Specific overrides for Tailwind text color classes within white backgrounds */
+  .bg-white .text-gray-600,
+  .bg-white .text-gray-500,
+  .bg-white .text-gray-400,
+  .bg-white .text-gray-700 {
+    color: inherit;
+  }
+
+  /* Ensure hover states maintain readability */
+  .bg-white .hover\:text-blue-500:hover {
+    color: #3b82f6; /* Match the blue color for consistency */
+  }
 }
 
 body {
