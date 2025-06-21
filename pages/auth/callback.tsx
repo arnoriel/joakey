@@ -7,17 +7,16 @@ const AuthCallback = () => {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
       const { data, error } = await supabase.auth.getSession();
       if (error) {
         console.error('Error handling callback:', error.message);
-        router.push(`${baseUrl}/auth`);
+        router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/auth`);
         return;
       }
       if (data.session) {
-        router.push(`${baseUrl}/`);
+        router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/`);
       } else {
-        router.push(`${baseUrl}/auth`);
+        router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/auth`);
       }
     };
 

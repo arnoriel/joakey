@@ -18,8 +18,7 @@ export default function Home() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-    router.push(`${baseUrl}/auth`);
+    router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/auth`);
   };
 
   return (
@@ -37,15 +36,14 @@ export default function Home() {
             </button>
           </>
         ) : (
-          <button
-            onClick={() => {
-              const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-              router.push(`${baseUrl}/auth`);
-            }}
-            className="bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 transition duration-300 shadow-sm"
-          >
-            Sign In
-          </button>
+            <button
+              onClick={() => {
+                router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/auth`);
+              }}
+              className="bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 transition duration-300 shadow-sm"
+            >
+              Sign In
+            </button>
         )}
       </div>
     </div>
