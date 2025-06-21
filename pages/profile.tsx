@@ -2,11 +2,21 @@ import { useEffect, useState } from 'react';
 import { supabase, User } from '../lib/supabase';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropImage';
+
+interface Area {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+}
 
 interface Profile {
   username: string;
   name: string;
   profile_image_url?: string;
+  bio?: string;
 }
 
 const Profile = () => {
@@ -14,11 +24,19 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
+  const [bio, setBio] = useState('');
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Crop states
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,7 +49,7 @@ const Profile = () => {
 
       const { data: profileData, error } = await supabase
         .from('profiles')
-        .select('username, name, profile_image_url')
+        .select('username, name, profile_image_url, bio')
         .eq('id', user.id)
         .single();
 
@@ -42,18 +60,33 @@ const Profile = () => {
       setProfile(profileData);
       setUsername(profileData.username);
       setName(profileData.name);
+      setBio(profileData.bio || '');
       setPreviewUrl(profileData.profile_image_url || null);
     };
 
     fetchData();
   }, [router]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      setProfileImage(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageSrc(reader.result as string);
+        setShowCropModal(true);
+      });
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleCropComplete = async () => {
+    if (!imageSrc || !croppedAreaPixels) return;
+
+    const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+    const file = new File([croppedImageBlob], 'cropped-image.jpg', { type: 'image/jpeg' });
+    setProfileImage(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setShowCropModal(false);
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -61,8 +94,8 @@ const Profile = () => {
     setLoading(true);
     setError(null);
 
-      try {
-          if (!user) throw new Error('No user logged in');
+    try {
+      if (!user) throw new Error('No user logged in');
 
       let imageUrl = profile?.profile_image_url || '';
       if (profileImage) {
@@ -86,105 +119,66 @@ const Profile = () => {
         .update({
           username,
           name,
+          bio,
           profile_image_url: imageUrl,
         })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      setProfile({ username, name, profile_image_url: imageUrl });
+      setProfile({ username, name, bio, profile_image_url: imageUrl });
       alert('Profile updated successfully!');
-      } catch (err: unknown) {
-          setError(err instanceof Error ? err.message : 'An error occurred while updating profile');
-      } finally {
-          setLoading(false);
-      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred while updating profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
-    const handleDeleteAccount = async () => {
-        if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-            return;
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you sure you want to delete your profile? This action cannot be undone.')) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!user) throw new Error('No user logged in');
+
+      if (profile?.profile_image_url) {
+        const fileName = profile.profile_image_url.split('/').pop();
+        if (fileName) {
+          await supabase.storage.from('profile-images').remove([`${user.id}/${fileName}`]);
         }
+      }
 
-        setLoading(true);
-        setError(null);
+      const { error: deleteProfileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
 
-        try {
-            if (!user) throw new Error('No user logged in');
+      if (deleteProfileError) throw new Error(`Failed to delete profile: ${deleteProfileError.message}`);
 
-            console.log('Deleting user with ID:', user.id); // Debug log
-
-            // 1. Delete profile image from storage if exists
-            if (profile?.profile_image_url) {
-                const fileName = profile.profile_image_url.split('/').pop();
-                if (fileName) {
-                    const { error: storageError } = await supabase.storage
-                        .from('profile-images')
-                        .remove([`${user.id}/${fileName}`]);
-                    if (storageError) {
-                        console.warn('Warning: Failed to delete profile image:', storageError);
-                    }
-                }
-            }
-
-            // 2. Delete profile from profiles table
-            const { error: deleteProfileError } = await supabase
-                .from('profiles')
-                .delete()
-                .eq('id', user.id);
-
-            if (deleteProfileError) throw new Error(`Failed to delete profile: ${deleteProfileError.message}`);
-
-            // 3. Delete user from auth.users via API
-            const response = await fetch('/api/delete-user', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ userId: user.id }),
-            });
-
-            console.log('Delete user response status:', response.status);
-
-            // Clone the response to read it multiple times if needed
-            const responseClone = response.clone();
-            const responseText = await responseClone.text();
-            console.log('Delete user response:', responseText);
-
-            const responseData = await response.json();
-            if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to delete user account');
-            }
-
-            // 4. Sign out and redirect
-            const { error: signOutError } = await supabase.auth.signOut();
-            if (signOutError) {
-                console.warn('Warning: Failed to sign out:', signOutError);
-            }
-
-            router.push('/auth');
-        } catch (err: unknown) {
-            console.error('Delete account error:', err);
-            setError(err instanceof Error ? err.message : 'An error occurred while deleting account');
-        } finally {
-            setLoading(false);
-        }
-    };
+      alert('Profile deleted. You can sign in again to create a new one.');
+      router.push('/auth');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred while deleting profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     setLoading(true);
     setError(null);
-
-      try {
-          await supabase.auth.signOut();
-          setUser(null);
-          setProfile(null);
-          router.push('/auth');
-      } catch (err: unknown) {
-          setError(err instanceof Error ? err.message : 'An error occurred while logging out');
-      } finally {
-          setLoading(false);
-      }
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      router.push('/auth');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred while logging out');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!user || !profile) {
@@ -216,7 +210,7 @@ const Profile = () => {
                   </svg>
                 )}
                 <div className="flex text-sm text-gray-600">
-                  <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
+                  <label htmlFor="file-upload" className="relative cursor pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
                     <span>Upload a file</span>
                     <input id="file-upload" name="file-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
                   </label>
@@ -226,51 +220,65 @@ const Profile = () => {
           </div>
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
+            <input id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
           </div>
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
+            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label htmlFor="bio" className="block text-sm font-medium text-gray-700">Bio</label>
+            <textarea 
+              id="bio" 
+              value={bio} 
+              onChange={(e) => setBio(e.target.value)} 
+              maxLength={255}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              rows={4}
             />
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300 disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300 disabled:opacity-50">
             {loading ? 'Updating...' : 'Update Profile'}
           </button>
         </form>
         <div className="mt-4 space-y-2">
-          <button
-            onClick={handleLogout}
-            disabled={loading}
-            className="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-300 disabled:opacity-50"
-          >
+          <button onClick={handleLogout} disabled={loading} className="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition duration-300 disabled:opacity-50">
             {loading ? 'Processing...' : 'Logout'}
           </button>
-          <button
-            onClick={handleDeleteAccount}
-            disabled={loading}
-            className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300 disabled:opacity-50"
-          >
+          <button onClick={handleDeleteAccount} disabled={loading} className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 transition duration-300 disabled:opacity-50">
             {loading ? 'Processing...' : 'Delete Account'}
+          </button>
+          <button
+            onClick={() => router.push('/foryou')}
+            className="bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 transition duration-300"
+          >
+            Back to For You
           </button>
         </div>
       </div>
+
+      {/* Crop Modal */}
+      {showCropModal && imageSrc && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg w-full max-w-md relative">
+            <div className="relative w-full h-64 bg-black">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, area) => setCroppedAreaPixels(area)}
+              />
+            </div>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button className="px-4 py-2 bg-gray-300 rounded" onClick={() => setShowCropModal(false)}>Cancel</button>
+              <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleCropComplete}>Crop</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

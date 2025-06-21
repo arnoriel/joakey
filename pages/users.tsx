@@ -9,6 +9,7 @@ interface Profile {
   name: string;
   role: string;
   profile_image_url?: string;
+  bio?: string;
 }
 
 const Users = () => {
@@ -41,12 +42,9 @@ const Users = () => {
       // Fetch the selected user's profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, username, name, role, profile_image_url')
+        .select('id, username, name, role, profile_image_url, bio')
         .eq('id', id)
         .single();
-
-      console.log('Selected profile data:', profileData);
-      console.log('Selected profile error:', profileError);
 
       if (profileError || !profileData) {
         console.error('Error fetching selected profile:', profileError);
@@ -116,6 +114,7 @@ const Users = () => {
             >
               @{selectedProfile.username}
             </p>
+            <p className="text-gray-500 text-sm">{selectedProfile.bio || 'No Bio Yet'}</p>
             <p className="text-gray-500 text-sm">{selectedProfile.role}</p>
           </div>
           <button

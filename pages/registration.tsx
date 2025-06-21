@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropImage';
+
+interface Area {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+}
 
 const Registration = () => {
   const [username, setUsername] = useState('');
@@ -12,6 +21,13 @@ const Registration = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Crop states
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -24,11 +40,25 @@ const Registration = () => {
   }, [router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      setProfileImage(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageSrc(reader.result as string);
+        setShowCropModal(true);
+      });
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleCropComplete = async () => {
+    if (!imageSrc || !croppedAreaPixels) return;
+
+    const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+    const file = new File([croppedImageBlob], 'cropped-image.jpg', { type: 'image/jpeg' });
+    setProfileImage(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setShowCropModal(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,8 +67,8 @@ const Registration = () => {
     setError(null);
 
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No user logged in');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user logged in');
 
       let imageUrl = '';
       if (profileImage) {
@@ -47,13 +77,13 @@ const Registration = () => {
         const { error: uploadError } = await supabase.storage
           .from('profile-images')
           .upload(fileName, profileImage);
-        
+
         if (uploadError) throw uploadError;
 
         const { data: publicUrlData } = supabase.storage
           .from('profile-images')
           .getPublicUrl(fileName);
-        
+
         imageUrl = publicUrlData.publicUrl;
       }
 
@@ -71,8 +101,9 @@ const Registration = () => {
 
       router.push('/foryou');
     } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        setLoading(false);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -134,8 +165,8 @@ const Registration = () => {
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="">Select a role</option>
-              <option value="Buyer">Buyer atau Pembeli</option>
-              <option value="Jockey">Jockey atau Penjoki</option>
+              <option value="Buyer">Pembeli</option>
+              <option value="Jockey">Penjoki</option>
             </select>
           </div>
           <button
@@ -147,6 +178,29 @@ const Registration = () => {
           </button>
         </form>
       </div>
+
+      {/* Crop Modal */}
+      {showCropModal && imageSrc && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg w-full max-w-md relative">
+            <div className="relative w-full h-64 bg-black">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, area) => setCroppedAreaPixels(area)}
+              />
+            </div>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button className="px-4 py-2 bg-gray-300 rounded" onClick={() => setShowCropModal(false)}>Cancel</button>
+              <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleCropComplete}>Crop</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

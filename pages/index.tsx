@@ -6,27 +6,30 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+    const checkProfile = async () => {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          router.push('/foryou');
-        } else {
-          router.push('/registration');
-        }
-      } else {
+      if (userError || !user) {
         router.push('/auth');
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        // Belum ada profile di tabel "profiles"
+        router.push('/registration');
+      } else {
+        // Sudah ada profile
+        router.push('/foryou');
       }
     };
 
-    getUser();
+    checkProfile();
   }, [router]);
 
   return (

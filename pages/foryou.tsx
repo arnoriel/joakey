@@ -9,6 +9,7 @@ interface Profile {
   name: string;
   role: string;
   profile_image_url?: string;
+  bio?: string;
 }
 
 const ForYou = () => {
@@ -30,7 +31,7 @@ const ForYou = () => {
       // Fetch current user's profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, username, name, role, profile_image_url')
+        .select('id, username, name, role, profile_image_url, bio')
         .eq('id', user.id)
         .single();
 
@@ -44,11 +45,8 @@ const ForYou = () => {
       // Fetch other users' profiles
       const { data: otherProfilesData, error: otherProfilesError } = await supabase
         .from('profiles')
-        .select('id, username, name, role, profile_image_url')
+        .select('id, username, name, role, profile_image_url, bio')
         .neq('id', user.id);
-
-      console.log('Other profiles data:', otherProfilesData);
-      console.log('Other profiles error:', otherProfilesError);
 
       if (otherProfilesError) {
         console.error('Error fetching other profiles:', otherProfilesError);
@@ -147,6 +145,7 @@ const ForYou = () => {
                     >
                       @{otherProfile.username}
                     </p>
+                    <p className="text-gray-500 text-sm">{otherProfile.bio || 'No Bio Yet'}</p>
                     <p className="text-gray-500 text-sm">{otherProfile.role}</p>
                   </div>
                 </div>
@@ -158,7 +157,7 @@ const ForYou = () => {
           <h2 className="text-xl font-bold mb-4">For You</h2>
           <p className="text-gray-600">
             Welcome to your personalized feed! Here you will find gaming content tailored to your interests,
-            including trending matches, top streamers, and coaching sessions. Stay tuned for more updates!
+            including trending matches, top jockeys. Stay tuned for more updates!
           </p>
         </div>
       </div>
