@@ -9,10 +9,11 @@ const Auth = () => {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    const redirectTo = process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL || 'http://localhost:3000/auth/callback';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'http://localhost:3000/auth/callback',
+        redirectTo,
       },
     });
     if (error) {
