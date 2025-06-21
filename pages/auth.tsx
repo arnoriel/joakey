@@ -35,7 +35,7 @@ const Auth = () => {
   }, [router]);
 
   useEffect(() => {
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://joakey-apps.vercel.app';
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
         router.push(`${baseUrl}/`);
