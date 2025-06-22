@@ -222,7 +222,7 @@ const Profile = () => {
           <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Name" required className="w-full bg-gray-800 border border-purple-500 rounded px-3 py-2" />
           <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Bio" className="w-full bg-gray-800 border border-purple-500 rounded px-3 py-2"></textarea>
 
-          {role === 'Jockey' && (
+         {role?.toLowerCase() === 'jockey' && (
             <div className="space-y-4">
               <h2 className="text-xl font-bold text-purple-300">Jasa Joki 🎮</h2>
 
