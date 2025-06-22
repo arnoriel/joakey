@@ -1,9 +1,16 @@
-// pages/users.tsx
 import { useEffect, useState } from 'react';
 import { supabase, User } from '../lib/supabase';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+
+interface JockeyService {
+  game: string;
+  from_rank: string;
+  to_rank: string;
+  price: number;
+}
+
 interface Profile {
   id: string;
   username: string;
@@ -13,6 +20,7 @@ interface Profile {
   bio?: string;
   followers_count: number;
   following_count: number;
+  jockey_services?: JockeyService[];
 }
 
 const Users = () => {
@@ -46,7 +54,7 @@ const Users = () => {
 
       const { data: profileRaw, error: profileError } = await supabase
         .from('profiles')
-        .select('id, username, name, role, profile_image_url, bio')
+        .select('id, username, name, role, profile_image_url, bio, jockey_services')
         .eq('id', id)
         .single();
 
@@ -66,6 +74,7 @@ const Users = () => {
         ...profileRaw,
         followers_count: followersCount || 0,
         following_count: followingCount || 0,
+        jockey_services: profileRaw.jockey_services || [],
       });
 
       const { data: followData } = await supabase
@@ -116,7 +125,7 @@ const Users = () => {
   }
 
   return (
-     <motion.div
+    <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 30 }}
@@ -157,15 +166,70 @@ const Users = () => {
             {isFollowing ? 'Following' : 'Follow'}
           </button>
 
+          {selectedProfile && (
+            <button
+              className="mt-2 w-full bg-pink-600 hover:bg-pink-500 py-2 rounded transition font-bold"
+              onClick={() => {
+                router.push({
+                  pathname: '/chatwith',
+                  query: {
+                    toId: selectedProfile.id, // ID user yang dipilih
+                  },
+                });
+              }}
+            >
+              Chat
+            </button>
+          )}
+
           <button
             onClick={() => router.push('/foryou')}
             className="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded transition"
           >
-            Back to For You
+            Back to For You Page
           </button>
         </div>
       </div>
 
+      {/* Jasa Joki */}
+      {selectedProfile.role?.toLowerCase() === 'jockey' && Array.isArray(selectedProfile.jockey_services) && selectedProfile.jockey_services.length > 0 && (
+        <div className="mt-6 max-w-xl mx-auto bg-gray-900 p-4 rounded-xl border border-purple-600">
+          <h2 className="text-lg font-bold text-purple-300 mb-3">Jasa Joki 🎮</h2>
+          {selectedProfile.jockey_services.map((service, index) => {
+            const finalPrice = service.price + 10000;
+
+            return (
+              <div key={index} className="bg-gray-800 p-3 rounded mb-4 border border-gray-700">
+                <p><span className="font-semibold text-white">Game:</span> {service.game}</p>
+                <p><span className="font-semibold text-white">Rank:</span> {service.from_rank} ➜ {service.to_rank}</p>
+                <p><span className="font-semibold text-white">Harga:</span> Rp{finalPrice.toLocaleString()}</p>
+
+                <button
+                  className="mt-2 w-full bg-green-600 hover:bg-green-500 py-2 rounded transition font-bold"
+                  onClick={() =>
+                    router.push({
+                      pathname: '/summary',
+                      query: {
+                        jockeyId: selectedProfile.id,
+                        jockeyName: selectedProfile.name,
+                        game: service.game,
+                        from: service.from_rank,
+                        to: service.to_rank,
+                        price: finalPrice,
+                      },
+                    })
+                  }
+                >
+                  Order
+                </button>
+              </div>
+            );
+          })}
+
+        </div>
+      )}
+
+      {/* Modal image */}
       {showImageModal && modalImageUrl && (
         <div
           className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center"

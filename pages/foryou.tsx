@@ -203,7 +203,6 @@ const ForYou = () => {
                     </button>
                   </div>
                   <p className="text-sm text-purple-200">{p.bio || 'No Bio Yet'}</p>
-                  <p className="text-sm text-purple-300">{p.role}</p>
                   <p className="text-sm text-purple-400">Followers: {p.followers_count}</p>
                 </div>
               </div>

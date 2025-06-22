@@ -14,6 +14,13 @@ interface Area {
   y: number;
 }
 
+interface JockeyService {
+  game: string;
+  from_rank: string;
+  to_rank: string;
+  price: number;
+}
+
 interface Profile {
   username: string;
   name: string;
@@ -21,6 +28,8 @@ interface Profile {
   bio?: string;
   followers_count: number;
   following_count: number;
+  role?: string;
+  jockey_services?: JockeyService[];
 }
 
 const Profile = () => {
@@ -29,6 +38,10 @@ const Profile = () => {
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
+  const [role, setRole] = useState('');
+  const [jockeyServices, setJockeyServices] = useState<JockeyService[]>([
+    { game: '', from_rank: '', to_rank: '', price: 0 },
+  ]);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,7 +62,7 @@ const Profile = () => {
 
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('username, name, profile_image_url, bio')
+        .select('username, name, profile_image_url, bio, role, jockey_services')
         .eq('id', user.id)
         .single();
 
@@ -70,6 +83,8 @@ const Profile = () => {
       setName(profileData.name);
       setBio(profileData.bio || '');
       setPreviewUrl(profileData.profile_image_url || null);
+      setRole(profileData.role || 'buyer');
+      setJockeyServices(profileData.jockey_services || [{ game: '', from_rank: '', to_rank: '', price: 0 }]);
     };
     fetchData();
   }, [router]);
@@ -112,8 +127,29 @@ const Profile = () => {
         imageUrl = data.publicUrl;
       }
 
-      await supabase.from('profiles').update({ username, name, bio, profile_image_url: imageUrl }).eq('id', user.id);
-      setProfile({ username, name, bio, profile_image_url: imageUrl, followers_count: profile?.followers_count || 0, following_count: profile?.following_count || 0 });
+      await supabase
+        .from('profiles')
+        .update({
+          username,
+          name,
+          bio,
+          profile_image_url: imageUrl,
+          role: role.toLowerCase(), // pastikan disimpan dalam lowercase
+          jockey_services: role.toLowerCase() === 'jockey' ? jockeyServices : null,
+        })
+        .eq('id', user.id);
+
+      setProfile({
+        username,
+        name,
+        bio,
+        profile_image_url: imageUrl,
+        followers_count: profile?.followers_count || 0,
+        following_count: profile?.following_count || 0,
+        role,
+        jockey_services: role === 'jockey' ? jockeyServices : undefined,
+      });
+
       alert('Profile updated!');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Update failed';
@@ -154,7 +190,7 @@ const Profile = () => {
   }
 
   return (
-      <motion.div
+    <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 30 }}
@@ -186,6 +222,45 @@ const Profile = () => {
           <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Name" required className="w-full bg-gray-800 border border-purple-500 rounded px-3 py-2" />
           <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Bio" className="w-full bg-gray-800 border border-purple-500 rounded px-3 py-2"></textarea>
 
+          {role === 'Jockey' && (
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold text-purple-300">Jasa Joki 🎮</h2>
+
+              {jockeyServices.map((service, idx) => (
+                <div key={idx} className="bg-gray-800 p-4 rounded border border-purple-500 space-y-2">
+                  <input type="text" placeholder="Game" value={service.game} onChange={e => {
+                    const updated = [...jockeyServices];
+                    updated[idx].game = e.target.value;
+                    setJockeyServices(updated);
+                  }} className="w-full bg-gray-700 px-2 py-1 rounded" />
+                  <div className="flex gap-2">
+                    <input type="text" placeholder="From Rank" value={service.from_rank} onChange={e => {
+                      const updated = [...jockeyServices];
+                      updated[idx].from_rank = e.target.value;
+                      setJockeyServices(updated);
+                    }} className="w-full bg-gray-700 px-2 py-1 rounded" />
+                    <input type="text" placeholder="To Rank" value={service.to_rank} onChange={e => {
+                      const updated = [...jockeyServices];
+                      updated[idx].to_rank = e.target.value;
+                      setJockeyServices(updated);
+                    }} className="w-full bg-gray-700 px-2 py-1 rounded" />
+                  </div>
+                  <input type="number" placeholder="Harga (Rp)" value={service.price} onChange={e => {
+                    const updated = [...jockeyServices];
+                    updated[idx].price = parseInt(e.target.value);
+                    setJockeyServices(updated);
+                  }} className="w-full bg-gray-700 px-2 py-1 rounded" />
+                  <button type="button" onClick={() => {
+                    const updated = jockeyServices.filter((_, i) => i !== idx);
+                    setJockeyServices(updated);
+                  }} className="text-red-400 hover:underline">Hapus</button>
+                </div>
+              ))}
+
+              <button type="button" onClick={() => setJockeyServices([...jockeyServices, { game: '', from_rank: '', to_rank: '', price: 0 }])} className="bg-purple-700 hover:bg-purple-600 px-3 py-1 rounded text-sm">+ Tambah Rank Joki</button>
+            </div>
+          )}
+
           <button type="submit" disabled={loading} className="w-full bg-purple-600 hover:bg-purple-500 py-2 rounded transition">
             {loading ? 'Updating...' : 'Update Profile'}
           </button>
@@ -194,7 +269,7 @@ const Profile = () => {
         <div className="mt-4 space-y-2">
           <button onClick={handleDeleteAccount} disabled={loading} className="w-full bg-red-600 hover:bg-red-500 py-2 rounded">Delete Account</button>
           <button onClick={() => router.push('/foryou')} className="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded">Back to For You Page</button>
-           <button onClick={handleLogout} disabled={loading} className="w-full bg-gray-600 hover:bg-gray-500 py-2 rounded">Logout</button>
+          <button onClick={handleLogout} disabled={loading} className="w-full bg-gray-600 hover:bg-gray-500 py-2 rounded">Logout</button>
         </div>
       </div>
 
