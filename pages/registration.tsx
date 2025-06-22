@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import Image from 'next/image';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../utils/cropImage';
-
+import { motion } from 'framer-motion';
 interface Area {
   width: number;
   height: number;
@@ -108,82 +108,93 @@ const Registration = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Complete Your Profile</h1>
+      <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 30 }}
+      transition={{ duration: 0.8, ease: 'easeOut' }}
+      className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 p-6 text-white font-gamer"
+    >
+      <div className="backdrop-blur-xl bg-white/5 border border-white/10 shadow-2xl rounded-3xl p-8 w-full max-w-md animate-fade-in">
+        <h1 className="text-3xl font-extrabold text-center text-white mb-6 tracking-wider">👾 Complete Your Profile</h1>
+
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Profile Image</label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-              <div className="space-y-1 text-center">
+            <label className="block text-sm font-medium text-gray-200 mb-2">Profile Image</label>
+            <div className="flex justify-center items-center border-2 border-dashed border-purple-500 rounded-xl p-6 bg-white/5 hover:bg-white/10 transition">
+              <div className="text-center space-y-2">
                 {previewUrl ? (
-                  <Image src={previewUrl} alt="Preview" width={100} height={100} className="mx-auto rounded-full" />
+                  <Image src={previewUrl} alt="Preview" width={100} height={100} className="mx-auto rounded-full border-4 border-purple-500 shadow-lg" />
                 ) : (
                   <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" />
                   </svg>
                 )}
-                <div className="flex text-sm text-gray-600">
-                  <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
-                    <span>Upload a file</span>
-                    <input id="file-upload" name="file-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
-                  </label>
-                </div>
+                <label htmlFor="file-upload" className="inline-block cursor-pointer bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition">
+                  Upload
+                  <input id="file-upload" name="file-upload" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} />
+                </label>
               </div>
             </div>
           </div>
+
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-200">Username</label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-600 p-2"
+              placeholder="Enter your username"
             />
           </div>
+
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-200">Name</label>
             <input
               id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-600 p-2"
+              placeholder="Enter your full name"
             />
           </div>
+
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700">Role</label>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-200">Role</label>
             <select
               id="role"
               value={role}
               onChange={(e) => setRole(e.target.value)}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-purple-600 p-2"
             >
               <option value="">Select a role</option>
               <option value="Buyer">Pembeli</option>
               <option value="Jockey">Penjoki</option>
             </select>
           </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl font-semibold tracking-wide hover:scale-105 transition transform duration-300 disabled:opacity-50"
           >
-            {loading ? 'Submitting...' : 'Complete Registration'}
+            {loading ? 'Submitting...' : '🚀 Complete Registration'}
           </button>
         </form>
       </div>
 
-      {/* Crop Modal */}
       {showCropModal && imageSrc && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
-          <div className="bg-white p-4 rounded-lg w-full max-w-md relative">
-            <div className="relative w-full h-64 bg-black">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-80 backdrop-blur-sm flex items-center justify-center animate-fade-in-fast">
+          <div className="bg-[#1f1f2e] p-6 rounded-xl shadow-2xl w-full max-w-md relative border border-purple-700">
+            <div className="relative w-full h-64 bg-black rounded-lg overflow-hidden">
               <Cropper
                 image={imageSrc}
                 crop={crop}
@@ -195,13 +206,13 @@ const Registration = () => {
               />
             </div>
             <div className="mt-4 flex justify-end space-x-2">
-              <button className="px-4 py-2 bg-gray-300 rounded" onClick={() => setShowCropModal(false)}>Cancel</button>
-              <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleCropComplete}>Crop</button>
+              <button className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600" onClick={() => setShowCropModal(false)}>Cancel</button>
+              <button className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700" onClick={handleCropComplete}>Crop</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

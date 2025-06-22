@@ -14,6 +14,7 @@ const AuthCallback = () => {
         return;
       }
       if (data.session) {
+        sessionStorage.setItem('loginSuccess', 'true'); // ✅ Tambahkan ini
         router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/`);
       } else {
         router.push(`${process.env.NEXT_PUBLIC_BASE_URL}/auth`);
